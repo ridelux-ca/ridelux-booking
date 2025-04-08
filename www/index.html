@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RideLux Booking</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <form id="booking-form">
+    <h1>Book a Ride</h1>
+    <input type="text" id="name" name="name" placeholder="Name" required>
+    <input type="tel" id="phone" name="phone" placeholder="Phone" required>
+    <input type="text" id="pickup" name="pickup" placeholder="Pickup location" required>
+    <input type="time" id="time" name="time" required>
+    <input type="text" id="destination" name="destination" placeholder="Destination" required>
+    <input type="text" id="distance" name="distance" placeholder="Distance" readonly>
+    <input type="text" id="price" name="price" placeholder="Price" readonly>
+    <button type="submit">Proceed to Payment</button>
+  </form>
+
+  <script>
+    let autocompletePickup, autocompleteDestination;
+
+    function initAutocomplete() {
+      autocompletePickup = new google.maps.places.Autocomplete(document.getElementById("pickup"));
+      autocompleteDestination = new google.maps.places.Autocomplete(document.getElementById("destination"));
+      autocompleteDestination.addListener("place_changed", () => calculateRoute());
+    }
+
+    function calculateRoute() {
+      const origin = document.getElementById("pickup").value;
+      const destination = document.getElementById("destination").value;
+      if (!origin || !destination) return;
+
+      const service = new google.maps.DistanceMatrixService();
+      service.getDistanceMatrix({
+        origins: [origin],
+        destinations: [destination],
+        travelMode: google.maps.TravelMode.DRIVING,
+        unitSystem: google.maps.UnitSystem.METRIC
+      }, (response, status) => {
+        if (status === "OK") {
+          const element = response.rows[0].elements[0];
+          const distanceText = element.distance.text;
+          const distanceVal = parseFloat(distanceText.replace(" km", ""));
+          const price = (distanceVal * 2.2).toFixed(2);
+          document.getElementById("distance").value = distanceText;
+          document.getElementById("price").value = `$${price}`;
+        }
+      });
+    }
+
+    document.getElementById("booking-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = {
+        name: document.getElementById("name").value,
+        phone: document.getElementById("phone").value,
+        pickup: document.getElementById("pickup").value,
+        time: document.getElementById("time").value,
+        destination: document.getElementById("destination").value,
+        distance: document.getElementById("distance").value,
+        price: document.getElementById("price").value,
+      };
+
+      try {
+        const res = await fetch("https://bookings.ridelux.ca/.netlify/functions/send-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        });
+
+        if (!res.ok) {
+          const errMsg = await res.text();
+          throw new Error(`Email failed: ${res.status} ${errMsg}`);
+        }
+
+      } catch (err) {
+        alert("Email failed, but booking will continue.");
+        console.error("Email error:", err);
+      }
+
+      alert("Your booking has been submitted!");
+      window.location.href = "https://buy.stripe.com/cN2g2336Qbp26xW9AC";
+    });
+
+    window.onload = initAutocomplete;
+  </script>
+
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAHsN2U1H7GxrL2RekMzb7Js9zi6ptKvtE&libraries=places"></script>
+</body>
+</html>

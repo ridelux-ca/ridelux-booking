@@ -1,0 +1,7 @@
+
+{
+  "appId": "com.ridelux.app",
+  "appName": "RideLux",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
